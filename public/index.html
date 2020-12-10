@@ -1,0 +1,106 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+
+    <title>FOB Code Exam</title>
+    <meta name="description" content="FOB Code Exam">
+    <meta name="author" content="Braxton Diggs">
+    <style>
+        body {
+            padding: 16px;
+        }
+
+        .center {
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        #product-table {
+            font-family: Arial, Helvetica, sans-serif;
+            border-collapse: collapse;
+            margin: 16px auto;
+        }
+
+        #product-table td,
+        #product-table th {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        #product-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #product-table tr:hover {
+            background-color: #ddd;
+        }
+
+        #product-table th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="center">
+        <select id="country-selector"></select>
+        <select id="state-selector"></select>
+    </div>
+    <table id="product-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Shipping</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs=" crossorigin="anonymous"></script>
+    <script>
+        Promise.all([
+            fetch('http://localhost:8000/api/country').then(response => response.json()),
+            fetch('http://localhost:8000/api/product').then(response => response.json())
+        ]).then(([country, product]) => {
+            for (var item of country.country) {
+                $('#country-selector').append($('<option>').text(item.name));
+            }
+            $('#country-selector').on('change', function () {
+                const val = $(this).children('option:selected').text();
+                const selected = country.country.find(item => item.name === val); // Get Selected Country
+                const selector = $('#state-selector');
+                selector.hide().html('');
+                updateProducts(product.product, selected); // Update Product Table
+                if (selected.children.length > 1) {
+                    for (var item of selected.children) {
+                        selector.append($('<option>').text(item.name));
+                    }
+                    selector.show().on('change', () => updateProducts(product.product, selected)).trigger('change');
+                }
+            }).trigger('change');
+        });
+
+        function updateProducts(product, selected) {
+            const table = $('#product-table tbody');
+            table.html('');
+            for (var item of product) {
+                table.append($('<tr>').append(`<td>${item.name}</td><td class="center">${getProductStatusIcon(item, selected)}</td>`))
+            }
+        }
+
+        function getProductStatusIcon(product, selected) {
+            const child = selected.children.find((item) => item.name === $('#state-selector option:selected').text()); // Get Selected State
+            const status  = product.exemptions.findIndex((exemption) => (selected.id === exemption.country && exemption.state === null) || // Check For Country Specific Exemption
+                (selected.id === exemption.country && child && child.id === exemption.state)) === -1; // Check For Country & State Specific Exemption
+            return `<img src="https://img.icons8.com/cotton/32/000000/${status ? 'checkmark' : 'delete-sign--v2'}.png"/>`;
+        }
+    </script>
+</body>
+
+</html>
